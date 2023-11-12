@@ -3,6 +3,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 from ...models import User, Team, TeamAdministrator, TeamMember
+from ... import models
 
 
 class ChannelTestCase(TestCase):
@@ -162,3 +163,212 @@ class ChannelTestCase(TestCase):
         response = self.client.post(url, request_data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_channel_change_team_member_scope_default_01(self):
+        """
+        チャネルを作成後、チームメンバを変更する。メンバースコープデフォルト
+        """
+
+        request_pre_channel_data = {
+            "name": "チャネル",
+            "team": ChannelTestCase.created_team_id,
+            "description": "最初のチャネル",
+            "operator_user": "user001",
+            "members_scope": 0,
+        }
+        url = "/channel/"
+        pre_channel_response = self.client.post(
+            url, request_pre_channel_data, format="json"
+        )
+
+        self.assertEqual(pre_channel_response.status_code, status.HTTP_200_OK)
+
+        request_team_data = {
+            "name": "チーム",
+            "description": "変更後のチーム",
+            "operator_user": "user001",
+            "administrators": ["user001", "user002"],
+            "members": [
+                "user003",
+                "user004",
+            ],
+        }
+        url = f"/team/{ChannelTestCase.created_team_id}"
+        response = self.client.put(url, request_team_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        channel = models.Channel.objects.get(id=pre_channel_response.data["id"])
+        channel_members = [
+            member.member.username
+            for member in models.ChannelMember.objects.filter(
+                channel=channel
+            ).select_related()
+        ]
+
+        # テスト対象パラメタ
+        self.assertEqual(
+            set(channel_members),
+            {*request_team_data["members"], *request_team_data["administrators"]},
+        )
+
+    def test_create_channel_change_team_member_scope_default_02(self):
+        """
+        チャネルを作成後、チームメンバを変更する。メンバースコープデフォルト
+        チームメンバ増加。メンバースコープ defaultにしたとき、チームメンバを増加するとチャネルメンバも増加する
+        """
+
+        request_pre_channel_data = {
+            "name": "チャネル",
+            "team": ChannelTestCase.created_team_id,
+            "description": "最初のチャネル",
+            "operator_user": "user001",
+            "members_scope": 0,
+        }
+        url = "/channel/"
+        pre_channel_response = self.client.post(
+            url, request_pre_channel_data, format="json"
+        )
+
+        self.assertEqual(pre_channel_response.status_code, status.HTTP_200_OK)
+
+        # チームメンバ増加
+        request_team_data = {
+            "name": "チーム",
+            "description": "変更後のチーム",
+            "operator_user": "user001",
+            "administrators": ["user001", "user002"],
+            "members": [
+                "user003",
+                "user004",
+                "user005",
+                "user006",
+            ],
+        }
+        url = f"/team/{ChannelTestCase.created_team_id}"
+        response = self.client.put(url, request_team_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        channel = models.Channel.objects.get(id=pre_channel_response.data["id"])
+        channel_members = [
+            member.member.username
+            for member in models.ChannelMember.objects.filter(
+                channel=channel
+            ).select_related()
+        ]
+
+        # テスト対象パラメタ
+        self.assertEqual(
+            set(channel_members),
+            {*request_team_data["members"], *request_team_data["administrators"]},
+        )
+
+    def test_create_channel_change_team_member_scope_limited_01(self):
+        """
+        チャネルを作成後、チームメンバを変更する。メンバースコープ、手動設定
+        """
+
+        request_pre_channel_data = {
+            "name": "チャネル",
+            "team": ChannelTestCase.created_team_id,
+            "description": "最初のチャネル",
+            "operator_user": "user001",
+            "members_scope": 1,
+            "members": [
+                "user001",
+                "user002",
+                "user003",
+                "user004",
+                "user005",
+            ],
+        }
+        url = "/channel/"
+        pre_channel_response = self.client.post(
+            url, request_pre_channel_data, format="json"
+        )
+
+        self.assertEqual(pre_channel_response.status_code, status.HTTP_200_OK)
+
+        request_team_data = {
+            "name": "チーム",
+            "description": "変更後のチーム",
+            "operator_user": "user001",
+            "administrators": ["user001", "user002"],
+            "members": [
+                "user003",
+                "user004",
+            ],
+        }
+        url = f"/team/{ChannelTestCase.created_team_id}"
+        response = self.client.put(url, request_team_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        channel = models.Channel.objects.get(id=pre_channel_response.data["id"])
+        channel_members = [
+            member.member.username
+            for member in models.ChannelMember.objects.filter(
+                channel=channel
+            ).select_related()
+        ]
+
+        # テスト対象パラメタ
+        self.assertEqual(
+            set(channel_members),
+            {*request_team_data["members"], *request_team_data["administrators"]},
+        )
+
+    def test_create_channel_change_team_member_scope_limited_02(self):
+        """
+        チャネルを作成後、チームメンバを変更する。メンバースコープ、手動設定
+        チームメンバ増加。メンバースコープ lmitedにしたとき、増加しても変わらない
+        """
+
+        request_pre_channel_data = {
+            "name": "チャネル",
+            "team": ChannelTestCase.created_team_id,
+            "description": "最初のチャネル",
+            "operator_user": "user001",
+            "members_scope": 1,
+            "members": [
+                "user001",
+                "user002",
+                "user003",
+                "user004",
+                "user005",
+            ],
+        }
+        url = "/channel/"
+        pre_channel_response = self.client.post(
+            url, request_pre_channel_data, format="json"
+        )
+
+        self.assertEqual(pre_channel_response.status_code, status.HTTP_200_OK)
+
+        # チームメンバ増加
+        request_team_data = {
+            "name": "チーム",
+            "description": "変更後のチーム",
+            "operator_user": "user001",
+            "administrators": ["user001", "user002"],
+            "members": [
+                "user003",
+                "user004",
+                "user005",
+                "user006",
+            ],
+        }
+        url = f"/team/{ChannelTestCase.created_team_id}"
+        response = self.client.put(url, request_team_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        channel = models.Channel.objects.get(id=pre_channel_response.data["id"])
+        channel_members = [
+            member.member.username
+            for member in models.ChannelMember.objects.filter(
+                channel=channel
+            ).select_related()
+        ]
+
+        self.assertEqual(
+            set(channel_members),
+            set(request_pre_channel_data["members"]),
+        )

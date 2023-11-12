@@ -32,6 +32,7 @@ class ChannelSerializer(serializers.ModelSerializer):
 
         members = validated_data.get("members")
         if validated_data.get("members_scope") == models.Channel.MembersScope.default:
+            # 所属するチームの管理者とメンバをチャネルメンバにする
             members = [
                 models.User.objects.filter(username=user).first()
                 for user in [*team_admins, *team_members]
@@ -39,6 +40,8 @@ class ChannelSerializer(serializers.ModelSerializer):
         elif validated_data.get("members_scope") == models.Channel.MembersScope.limited:
             if members is not None:
                 validated_data.pop("members")
+            else:
+                raise ValidationError()
 
         operator_user = validated_data.pop("operator_user")
         _creator = models.User.objects.filter(username=operator_user).first()
