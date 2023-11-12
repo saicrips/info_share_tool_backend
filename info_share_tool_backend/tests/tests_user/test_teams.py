@@ -180,7 +180,7 @@ class TeamTestCase(TestCase):
             "name": "チームA",
             "description": "最初のチーム",
             "operator_user": "user001",
-            "administrators": ["user002", "user003"],
+            "administrators": ["user001", "user002"],
             "members": [
                 "user003",
                 "user004",
@@ -195,7 +195,7 @@ class TeamTestCase(TestCase):
         request_data = {
             "name": "チームB",
             "description": "更新されたチーム",
-            "operator_user": "user001",
+            "operator_user": "user003",
             "administrators": ["user001", "user002", "user003"],
             "members": [
                 "user006",
@@ -207,7 +207,7 @@ class TeamTestCase(TestCase):
         team_id = response.data.get("id")
         url = f"/team/{team_id}"
         response = self.client.put(url, request_data, format="json")
-        # self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_delete_team(self):
         """
