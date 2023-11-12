@@ -1,47 +1,63 @@
 from rest_framework import fields, serializers
-from ..models import (
-    Team,
-    User,
-    TeamAdministrator,
-    TeamMember,
-    Channel,
-    ChannelShareUser,
-)
+from rest_framework.exceptions import ValidationError, NotFound, PermissionDenied
+from .. import models
 
 
-class ChannelShareUserSerializer(serializers.PrimaryKeyRelatedField):
+class ChannelMemberSerializer(serializers.PrimaryKeyRelatedField):
     class Meta:
-        model = ChannelShareUser
-        fields = ("share_user",)
+        model = models.ChannelMember
+        fields = ("members",)
 
 
 class ChannelSerializer(serializers.ModelSerializer):
-    share_users = ChannelShareUserSerializer(
-        many=True, queryset=User.objects.all(), required=False
+    members = ChannelMemberSerializer(
+        many=True, queryset=models.User.objects.all(), required=False
     )
 
-    creator = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), write_only=True
+    operator_user = serializers.PrimaryKeyRelatedField(
+        queryset=models.User.objects.all(), write_only=True
     )
 
-    def create(self, validated_data):
-        share_users = validated_data.pop("share_users")
-        creator = validated_data.get("creator")
+    def create(self, validated_data: dict):
+        # チームとチーム管理者・メンバ取得
+        team = validated_data.get("team")
+        team_admins = [
+            team_admin.admin.username
+            for team_admin in models.TeamAdministrator.objects.filter(team=team)
+        ]
+        team_members = [
+            team_member.member.username
+            for team_member in models.TeamMember.objects.filter(team=team)
+        ]
 
-        team = Channel.objects.create(**validated_data)
+        members = validated_data.get("members")
+        if validated_data.get("members_scope") == models.Channel.MembersScope.default:
+            members = [
+                models.User.objects.filter(username=user).first()
+                for user in [*team_admins, *team_members]
+            ]
+        elif validated_data.get("members_scope") == models.Channel.MembersScope.limited:
+            if members is not None:
+                validated_data.pop("members")
 
-        # 操作者が管理者に含まれないとき追加する
-        if operator_user not in admins:
-            admins.append(operator_user)
-        admin_objs = []
-        admins = list(set(admins))
-        for admin in admins:
-            admin_objs.append(TeamAdministrator(team=team, admin=admin))
-        TeamAdministrator.objects.bulk_create(admin_objs)
+        operator_user = validated_data.pop("operator_user")
+        _creator = models.User.objects.filter(username=operator_user).first()
+
+        # 操作者が管理者・メンバに含まれないとき権限エラー
+        if _creator.username not in [*team_admins, *team_members]:
+            msg = f"operator: {operator_user} has no permission"
+            raise PermissionDenied(msg)
+
+        channel = models.Channel.objects.create(**validated_data, creator=_creator)
 
         member_objs = []
         members = list(set(members))
         for member in members:
-            member_objs.append(TeamMember(team=team, member=member))
-        TeamMember.objects.bulk_create(member_objs)
-        return team
+            member_objs.append(models.ChannelMember(channel=channel, member=member))
+        models.ChannelMember.objects.bulk_create(member_objs)
+
+        return channel
+
+    class Meta:
+        model = models.Channel
+        fields = "__all__"

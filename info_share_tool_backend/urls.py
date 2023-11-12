@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.urls import path, include
 
-from .views import users, teams
+from .views import users, teams, channels
 from rest_framework.authtoken import views
 
 urlpatterns = [
@@ -25,5 +25,6 @@ urlpatterns = [
     path("team/", teams.TeamCreateView.as_view()),
     path("team/<int:team_id>", teams.TeamDetailView.as_view()),
     path("team/list", teams.TeamListView.as_view()),
+    path("channel/", channels.ChannelCreateView.as_view()),
     path("api-token-auth/", views.obtain_auth_token),
 ]

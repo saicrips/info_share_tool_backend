@@ -4,12 +4,19 @@ from . import User, Team
 
 
 class Channel(models.Model):
+    class MembersScope(models.IntegerChoices):
+        default = 0, "default"
+        limited = 1, "limited"
+
     name = models.CharField(verbose_name="name", max_length=64)
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
     description = models.CharField(verbose_name="description", max_length=200)
     creator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    share_user = models.ManyToManyField(
-        User, through="ChannelShareUser", related_name="share_users"
+    members_scope = models.IntegerField(
+        choices=MembersScope.choices, default=MembersScope.default
+    )
+    members = models.ManyToManyField(
+        User, through="ChannelMember", related_name="channel_members"
     )
     created_at = models.TimeField(
         verbose_name="created_at", auto_now_add=True, editable=False
@@ -22,6 +29,6 @@ class Channel(models.Model):
         return self.name
 
 
-class ChannelShareUser(models.Model):
+class ChannelMember(models.Model):
     channel = models.ForeignKey(Channel, on_delete=models.CASCADE)
-    share_user = models.ForeignKey(User, on_delete=models.CASCADE)
+    member = models.ForeignKey(User, on_delete=models.CASCADE)
