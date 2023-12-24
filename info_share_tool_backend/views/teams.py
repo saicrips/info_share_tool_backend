@@ -16,7 +16,6 @@ class TeamCreateView(APIView):
         serializer = TeamSerializer(data=request.data)
 
         if not serializer.is_valid():
-            print(serializer.errors)
             raise ValidationError(serializer.errors)
 
         serializer.save()

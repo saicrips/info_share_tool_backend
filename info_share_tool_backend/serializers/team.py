@@ -97,7 +97,6 @@ class TeamSerializer(serializers.ModelSerializer):
         # チャネルのメンバスコープがlimitedのとき、
         # チーム更新で削除された管理者・メンバをチャネルメンバでも削除
         models.ChannelMember.objects.filter(
-            channel__members_scope=models.Channel.MembersScope.limited,
             channel__team=instance,
             member__in=[*deleted_admins, *deleted_members],
         ).select_related().delete()
@@ -106,7 +105,7 @@ class TeamSerializer(serializers.ModelSerializer):
         # チーム更新をしたとき、チームに所属するチャネルのメンバーを更新する
         channel_member_objs = []
         channels = models.Channel.objects.filter(
-            team=instance, members_scope=models.Channel.MembersScope.default
+            team=instance
         ).select_related()
         for channel in channels:
             models.ChannelMember.objects.filter(channel=channel).delete()

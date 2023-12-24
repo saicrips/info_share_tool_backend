@@ -26,5 +26,6 @@ urlpatterns = [
     path("team/<int:team_id>", teams.TeamDetailView.as_view()),
     path("team/list", teams.TeamListView.as_view()),
     path("channel/", channels.ChannelCreateView.as_view()),
+    path("channel/<int:channel_id>", channels.ChannelDetailView.as_view()),
     path("api-token-auth/", views.obtain_auth_token),
 ]
